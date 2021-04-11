@@ -27,27 +27,55 @@
 // TODO: Exceptions in case of bad format source file (repeated separators, to big data, values etc)
 // TODO: Tests...
 
-void ParseExceptions(const std::exception &);
+void ParseExceptions( const std::exception & );
 
-template< typename key_type, typename values_type >
-std::vector<std::pair< key_type, values_type >> ParseFileToVector(std::string filename,
-            const char assigment_separator = '=', const char separator = '\n')
+template< typename key_t, typename value_t >
+using vec_of_pair = std::vector< std::pair< key_t, value_t >>;
+
+template< typename T >
+T ParseArithmeticTypesImpl( char * strToArithmetic, std::true_type )
 {
-    // for now only support <std::string, int>
-    const bool key_type_is_string     = std::is_same< key_type, std::string >::value;
-    const bool value_type_is_int      = std::is_same< values_type, int >::value;
-    static_assert( key_type_is_string && value_type_is_int, "Unsupported types" );
+    static_assert( !( std::is_same< T, wchar_t >::value ), "Convert from char types not allowed");
+    return atol( strToArithmetic );
 }
 
-template<>
-std::vector<std::pair< std::string, int >> ParseFileToVector(std::string filename,
-            const char assigment_separator, const char separator)
+template< typename T >
+T ParseArithmeticTypesImpl( char * strToArithmetic, std::false_type )
 {
-    std::ifstream parse_file(filename, std::ios::in);
-    std::vector<std::pair<std::string,int>> vec;
-    std::pair<std::string,int> pair_temp{};
+    return atof( strToArithmetic );
+}
+
+template< typename T >
+T ParseArithmeticTypes( char * strToArithmetic )
+{
+    return ParseArithmeticTypesImpl< T >( strToArithmetic, std::is_integral< T >() );
+}
+
+template< typename values_type >
+std::vector< std::pair< std::string, values_type >> ParseFileToVectorImp( std::string,
+             const char, const char );
+
+template< typename key_type, typename values_type >
+vec_of_pair< key_type, values_type > ParseFileToVector( std::string filename,
+             const char assigment_separator = '=', const char separator = '\n')
+{
+    // for now only support < std::string, arithmetic types >
+    const bool key_type_is_string       = std::is_same< key_type, std::string >::value;
+    const bool value_type_is_arithmetic = std::is_arithmetic< values_type >::value;
+    const bool value_type_is_char       = std::is_same< values_type, char >::value;
+    static_assert( key_type_is_string && value_type_is_arithmetic && !value_type_is_char, "Unsupported types" );
+
+    return ParseFileToVectorImp< values_type >( filename, assigment_separator, separator );
+}
+
+template< typename values_type >
+vec_of_pair< std::string, values_type > ParseFileToVectorImp( std::string filename,
+             const char assigment_separator, const char separator )
+{
+    std::ifstream parse_file( filename, std::ios::in );
+    std::vector< std::pair< std::string, values_type >> vec;
+    std::pair< std::string, values_type > pair_temp{};
     std::string key_temp{};
-    int values_temp{};
     bool key_value_switcher = true;
 
     try
@@ -56,10 +84,10 @@ std::vector<std::pair< std::string, int >> ParseFileToVector(std::string filenam
         {
             std::string temp;
             // std::string throws exception if data is to big to assign
-            temp.assign( std::istreambuf_iterator<char>(parse_file), std::istreambuf_iterator<char>() );
-            char * fileTemp = new char[temp.length() + 1];
+            temp.assign( std::istreambuf_iterator< char >( parse_file ), std::istreambuf_iterator< char >() );
+            char * fileTemp = new char[ temp.length() + 1 ];
             strcpy( fileTemp,temp.c_str() );
-            char * token = strtok(fileTemp, &assigment_separator);
+            char * token = strtok( fileTemp, &assigment_separator );
             while( token != NULL )
             {
                 if( key_value_switcher )
@@ -70,22 +98,20 @@ std::vector<std::pair< std::string, int >> ParseFileToVector(std::string filenam
                 }
                 else
                 {
-                    pair_temp.second = atoi(token);
+                    pair_temp.second = ParseArithmeticTypes< values_type >( token );
                     vec.push_back(pair_temp);
                     token = std::strtok( NULL, &assigment_separator );
                     key_value_switcher = true;
-
-                    // run-time assert to do
                 }
             }
             delete [] fileTemp;
             parse_file.close();
         }
         else
-            throw std::runtime_error("Unable to open file\n");
+            throw std::runtime_error( "Unable to open file\n" );
     }
 
-    catch(const std::exception & exp)
+    catch( const std::exception & exp )
     {
         ParseExceptions(exp);
     }
@@ -93,12 +119,12 @@ std::vector<std::pair< std::string, int >> ParseFileToVector(std::string filenam
     return vec;
 }
 
-void ParseExceptions(const std::exception & exp)
+void ParseExceptions( const std::exception & exp )
 {
-    auto expType = typeid(exp).name();
-    if( expType == typeid(std::length_error).name())
+    auto expType = typeid( exp ).name();
+    if( expType == typeid( std::length_error ).name())
         std::cerr << "Reading file has too big data. Error lenght: " << exp.what() << '\n';
-    else if( expType == typeid(std::runtime_error).name())
+    else if( expType == typeid( std::runtime_error ).name())
         std::cerr << exp.what();
 }
 
