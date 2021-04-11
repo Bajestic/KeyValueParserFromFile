@@ -8,12 +8,12 @@ depending on the types to be guessed from file. It is also possible to choose tw
 Default separators are respectively '=' for assigment separator and next line tag '\n' for separator
 
 ```cpp
-ParseFileToVector<KeyType, ValueType>("YourFile.txt",'AssigmentSeparator','Separator')
+ParseFileToVector< KeyType, ValueType >( "YourFile.txt", 'AssigmentSeparator', 'Separator')
 ```
 
-Function returns in this case vector of pairs. For now avaible only string and int pair
+Function returns in this case vector of pairs. For now avaible only string and arithmetic pair
 ```cpp 
-std::vector<std::pair<std::string,int>>
+std::vector<std::pair< std::string, arithmetic_type >>
 ```
 
 More types soon.
