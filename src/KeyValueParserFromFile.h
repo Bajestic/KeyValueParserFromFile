@@ -20,6 +20,7 @@
 #include <cstring>
 #include <type_traits>
 #include <stdexcept>
+#include "atoall.h"
 
 // TODO: More static assertions for type control to choose overload function for strict types
 // TODO: Extract data to containers - map and vector of pairs for more types
@@ -31,25 +32,6 @@ void ParseExceptions( const std::exception & );
 
 template< typename key_t, typename value_t >
 using vec_of_pair = std::vector< std::pair< key_t, value_t >>;
-
-template< typename T >
-T ParseArithmeticTypesImpl( char * strToArithmetic, std::true_type )
-{
-    static_assert( !( std::is_same< T, wchar_t >::value ), "Convert from char types not allowed");
-    return atol( strToArithmetic );
-}
-
-template< typename T >
-T ParseArithmeticTypesImpl( char * strToArithmetic, std::false_type )
-{
-    return atof( strToArithmetic );
-}
-
-template< typename T >
-T ParseArithmeticTypes( char * strToArithmetic )
-{
-    return ParseArithmeticTypesImpl< T >( strToArithmetic, std::is_integral< T >() );
-}
 
 template< typename values_type >
 std::vector< std::pair< std::string, values_type >> ParseFileToVectorImp( std::string,
@@ -69,7 +51,7 @@ vec_of_pair< key_type, values_type > ParseFileToVector( std::string filename,
 }
 
 template< typename values_type >
-vec_of_pair< std::string, values_type > ParseFileToVectorImp( std::string filename,
+static vec_of_pair< std::string, values_type > ParseFileToVectorImp( std::string filename,
              const char assigment_separator, const char separator )
 {
     std::ifstream parse_file( filename, std::ios::in );
@@ -86,7 +68,7 @@ vec_of_pair< std::string, values_type > ParseFileToVectorImp( std::string filena
             // std::string throws exception if data is to big to assign
             temp.assign( std::istreambuf_iterator< char >( parse_file ), std::istreambuf_iterator< char >() );
             char * fileTemp = new char[ temp.length() + 1 ];
-            strcpy( fileTemp,temp.c_str() );
+            strcpy( fileTemp, temp.c_str() );
             char * token = strtok( fileTemp, &assigment_separator );
             while( token != NULL )
             {
@@ -98,7 +80,7 @@ vec_of_pair< std::string, values_type > ParseFileToVectorImp( std::string filena
                 }
                 else
                 {
-                    pair_temp.second = ParseArithmeticTypes< values_type >( token );
+                    pair_temp.second = atoall< values_type >( token );
                     vec.push_back(pair_temp);
                     token = std::strtok( NULL, &assigment_separator );
                     key_value_switcher = true;
